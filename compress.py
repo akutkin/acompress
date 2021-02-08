@@ -14,10 +14,35 @@ _MAX_COMPRESS_TIME = 24 * 3600 # HOURS * SECONDS
 _MAX_POOL = _MAX_COMPRESS_TIME // _POOL_TIME
 
 from casacore.tables import table as CasacoreTable
+from casacore.tables import taql
 import shutil
 import os
 from subprocess import Popen as Process, TimeoutExpired, PIPE
 import numpy as np
+from collections.abc import Iterable
+
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx, array[idx]
+
+
+def get_freq_chans(msin, freqs):
+    """
+    find channels numbers from measurement set {msin}
+    which correspond to the frequencies {freqs} (float or array)
+    """
+    if not isinstance(freqs, Iterable):
+        freqs = [freqs]
+    msfreqs = taql(f'select CHAN_FREQ from {msin}::SPECTRAL_WINDOW')[0]['CHAN_FREQ']
+    chans = []
+    for freq in freqs:
+        i, f = find_nearest(msfreqs, freq)
+        chans.append(i)
+    if len(chans) == 1:
+        chans = chans[0]
+    return chans
 
 
 def setup_logging(verbose=False):
@@ -25,17 +50,6 @@ def setup_logging(verbose=False):
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-
-
-def parse_args():
-    parser = ArgumentParser(description='Apply flags and compress measurement set with dysco')
-    parser.add_argument('-i', '--input', help='input MS')
-    parser.add_argument('-o', '--output', default='', help='output MS (if empty -- the input is overwritten)')
-    parser.add_argument('-f', '--flags', help='flag table to restore')
-    parser.add_argument('-b', '--bitrate', default=12, help='bitrate for dysco compression')
-    parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('-d', '--decompress', default=False, action='store_true')
-    return parser.parse_args()
 
 
 def apply_flags(msin_path, flags_path, msout_path=''):
@@ -133,13 +147,29 @@ def decompress(msin_path, msout_path=''):
     return msout_path
 
 
+def parse_args():
+    parser = ArgumentParser(description='Apply flags and compress measurement set with dysco')
+    parser.add_argument('-i', '--input', help='input MS')
+    parser.add_argument('-o', '--output', default='', help='output MS (if empty -- the input is overwritten)')
+    parser.add_argument('-f', '--flags', help='flag table to restore')
+    parser.add_argument('-b', '--bitrate', default=12, help='bitrate for dysco compression')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-d', '--decompress', default=False, action='store_true')
+    return parser.parse_args()
+
+
 def main():
     args = parse_args()
     setup_logging(args.verbose)
     if args.decompress:
         result = decompress(args.input, args.output)
     else:
-        # msout1 = split_ms(args.input, 10464, 164, msout_path=args.input.replace('.MS', '_lower.MS')) # to verify with Tom
+# It's better to hardcode to prevent errors from typing in console:
+        freqs_interval_to_save = [1180.0e6, 1200.0e6] # by Tom
+        chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
+        chan0 = chans_interval_to_save[0]
+        nchans = chans_interval_to_save[1] - chan0
+        msout1 = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
         msout2 = split_ms(args.input, 12288, 12288, msout_path=args.input.replace('.MS', '_upper.MS')) # upper half-band
         test_same_flags(msout2, args.flags)
         flagged_ms_path = apply_flags(msout2,

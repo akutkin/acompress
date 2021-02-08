@@ -164,12 +164,19 @@ def main():
     if args.decompress:
         result = decompress(args.input, args.output)
     else:
+# split out 1180 -- 1200 MHz chunk
 # It's better to hardcode to prevent errors from typing in console:
         freqs_interval_to_save = [1180.0e6, 1200.0e6] # by Tom
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
         nchans = chans_interval_to_save[1] - chan0
-        msout1 = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
+        msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
+# split out the 1400+ chunk
+        freqs_interval_to_save = 1400.0e6
+        chan0 = get_freq_chans(args.input, freqs_interval_to_save)
+        nchans = 0 # means all till the end (see DPPP docs)
+        msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
+# main compression:
         msout2 = split_ms(args.input, 12288, 12288, msout_path=args.input.replace('.MS', '_upper.MS')) # upper half-band
         test_same_flags(msout2, args.flags)
         flagged_ms_path = apply_flags(msout2,

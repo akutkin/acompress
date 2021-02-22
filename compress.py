@@ -52,6 +52,17 @@ def setup_logging(verbose=False):
         logging.basicConfig(level=logging.INFO)
 
 
+# def copy_flag_chan(flagtable, from_chan, to_chan):
+#     """
+#     copy flags from channels 2 and 62 to channels 1 and 63 within the flagtable
+#     """
+#     with CasacoreTable(flagtable, readonly=False) as table:
+#         c = table.getcol('FLAG')
+#         c[:, 1::64, :] = c[:, 2::64,:]
+#         c[:, 63::64, :] = c[:, 62::64,:]
+#         table.putcol('FLAG', c)
+
+
 def apply_flags(msin_path, flags_path, msout_path=''):
     if not msout_path:
         msout_path = msin_path
@@ -62,7 +73,11 @@ def apply_flags(msin_path, flags_path, msout_path=''):
     logging.debug('Applying flags to %s', msout_path)
     with CasacoreTable(msout_path, readonly=False) as table:
         flag_in = CasacoreTable(flags_path)
-        table.putcol('FLAG', flag_in.getcol('FLAG'))
+        flag_col = flag_in.getcol('FLAG')
+        logging.info('Copying flags to sub-channels 1 & 63 from the neighboring channels')
+        flag_col[:, 1::64, :] = flag_col[:, 2::64,:]
+        flag_col[:, 63::64, :] = flag_col[:, 62::64,:]
+        table.putcol('FLAG', flag_col)
         table.putcol('FLAG_ROW', flag_in.getcol('FLAG_ROW'))
     return msout_path
 

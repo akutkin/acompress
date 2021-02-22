@@ -125,7 +125,7 @@ def split_ms(msin_path, startchan, nchan, msout_path=''):
                     'msout.overwrite=True',
                     f'msin={msin_path}',
                     f'msin.startchan={startchan}',
-                    f'msin.startchan={nchan}',
+                    f'msin.nchan={nchan}',
                     f'msout={msout_path}']
     return_code = execute_dppp(command_args)
     logging.debug('Split of %s returned status code %s', msin_path, return_code)
@@ -185,14 +185,22 @@ def main():
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
         nchans = chans_interval_to_save[1] - chan0
-        msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
-# split out the 1400+ chunk
-        freqs_interval_to_save = 1400.0e6
-        chan0 = get_freq_chans(args.input, freqs_interval_to_save)
-        nchans = 0 # means all till the end (see DPPP docs)
+        if chan0 == 0 and nchans == 0: # ignore MS with band > 1180
+            logging.info('[1180-1200 MHz] is not in the data. Not splitting')
+            pass
+        else:
+            msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
+# split out the 1400-1421 chunk
+        freqs_interval_to_save = [1400.0e6, 1421.0e6]
+        chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
+        chan0 = chans_interval_to_save[0]
+        nchans = chans_interval_to_save[1] - chan0
         msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
 # main compression:
         msout2 = split_ms(args.input, 12288, 12288, msout_path=args.input.replace('.MS', '_upper.MS')) # upper half-band
+        if not args.flags:
+            logging.info('No flags provided. Not compressing.')
+            return
         test_same_flags(msout2, args.flags)
         flagged_ms_path = apply_flags(msout2,
                                       flags_path=args.flags,

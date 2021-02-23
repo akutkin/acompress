@@ -180,7 +180,7 @@ def main():
         result = decompress(args.input, args.output)
     else:
 # split out 1180 -- 1200 MHz chunk
-# It's better to hardcode to prevent errors from typing in console:
+# It's better to hardcode the freqs to prevent errors from typing in console:
         freqs_interval_to_save = [1180.0e6, 1200.0e6] # by Tom
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
@@ -191,7 +191,7 @@ def main():
         else:
             msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
 # split out the 1400-1421 chunk
-        freqs_interval_to_save = [1400.0e6, 1421.0e6]
+        freqs_interval_to_save = [1400.0e6, 1431.0e6]
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
         nchans = chans_interval_to_save[1] - chan0

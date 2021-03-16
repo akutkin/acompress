@@ -176,13 +176,16 @@ def main():
         else:
             msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
 # split out the 1400-1421 chunk
-        freqs_interval_to_save = [1400.0e6, 1421.0e6]
+        freqs_interval_to_save = [1400.0e6, 1425.0e6]
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
         nchans = chans_interval_to_save[1] - chan0
         msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
-# main compression:
-        msout2 = split_ms(args.input, 12288, 12288, msout_path=args.input.replace('.MS', '_upper.MS')) # upper half-band
+# split upper subband:
+        start_freq_to_save = 1279.994e6 # e-mail from Tom (8 Mar 2021)
+        chan0 = get_freq_chans(args.input, start_freq_to_save)
+        msout2 = split_ms(args.input, chan0, 0, msout_path=args.input.replace('.MS', '_upper.MS')) # upper half-band
+
         if not args.flags:
             logging.info('No flags provided. Not compressing.')
             return

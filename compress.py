@@ -189,17 +189,13 @@ def main():
             logging.info('[1180-1200 MHz] is not in the data. Not splitting')
             pass
         else:
-            msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
-# split out the 1400-1421 chunk
-<<<<<<< HEAD
+            _ = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
+# split out the 1400-1425 chunk (Tom's message)
         freqs_interval_to_save = [1400.0e6, 1425.0e6]
-=======
-        freqs_interval_to_save = [1400.0e6, 1431.0e6]
->>>>>>> 79acb3587e9512fd596d60461e6eca8a157de600
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
         nchans = chans_interval_to_save[1] - chan0
-        msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
+        _ = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
 # split upper subband:
         start_freq_to_save = 1279.994e6 # e-mail from Tom (8 Mar 2021)
         chan0 = get_freq_chans(args.input, start_freq_to_save)

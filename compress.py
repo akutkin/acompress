@@ -52,6 +52,17 @@ def setup_logging(verbose=False):
         logging.basicConfig(level=logging.INFO)
 
 
+# def copy_flag_chan(flagtable, from_chan, to_chan):
+#     """
+#     copy flags from channels 2 and 62 to channels 1 and 63 within the flagtable
+#     """
+#     with CasacoreTable(flagtable, readonly=False) as table:
+#         c = table.getcol('FLAG')
+#         c[:, 1::64, :] = c[:, 2::64,:]
+#         c[:, 63::64, :] = c[:, 62::64,:]
+#         table.putcol('FLAG', c)
+
+
 def apply_flags(msin_path, flags_path, msout_path=''):
     if not msout_path:
         msout_path = msin_path
@@ -62,7 +73,11 @@ def apply_flags(msin_path, flags_path, msout_path=''):
     logging.debug('Applying flags to %s', msout_path)
     with CasacoreTable(msout_path, readonly=False) as table:
         flag_in = CasacoreTable(flags_path)
-        table.putcol('FLAG', flag_in.getcol('FLAG'))
+        flag_col = flag_in.getcol('FLAG')
+        logging.info('Copying flags to sub-channels 1 & 63 from the neighboring channels')
+        flag_col[:, 1::64, :] = flag_col[:, 2::64,:]
+        flag_col[:, 63::64, :] = flag_col[:, 62::64,:]
+        table.putcol('FLAG', flag_col)
         table.putcol('FLAG_ROW', flag_in.getcol('FLAG_ROW'))
     return msout_path
 
@@ -165,7 +180,7 @@ def main():
         result = decompress(args.input, args.output)
     else:
 # split out 1180 -- 1200 MHz chunk
-# It's better to hardcode to prevent errors from typing in console:
+# It's better to hardcode the freqs to prevent errors from typing in console:
         freqs_interval_to_save = [1180.0e6, 1200.0e6] # by Tom
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
@@ -176,7 +191,11 @@ def main():
         else:
             msout = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
 # split out the 1400-1421 chunk
+<<<<<<< HEAD
         freqs_interval_to_save = [1400.0e6, 1425.0e6]
+=======
+        freqs_interval_to_save = [1400.0e6, 1431.0e6]
+>>>>>>> 79acb3587e9512fd596d60461e6eca8a157de600
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
         nchans = chans_interval_to_save[1] - chan0

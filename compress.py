@@ -63,7 +63,10 @@ def setup_logging(verbose=False):
 #         table.putcol('FLAG', c)
 
 
+
+
 def apply_flags(msin_path, flags_path, msout_path=''):
+    """apply flags from flagtable to the data"""
     if not msout_path:
         msout_path = msin_path
     else:
@@ -71,12 +74,27 @@ def apply_flags(msin_path, flags_path, msout_path=''):
             shutil.rmtree(msout_path)
         shutil.copytree(msin_path, msout_path)
     logging.debug('Applying flags to %s', msout_path)
+
+    def replace_bad_col(bad, good):
+        if len(bad) == len(good):
+            bad = good
+        elif len(bad) == len(good) + 1:
+            bad = good[:-1]
+        elif len(bad) == len(good) - 1:
+            bad[:-1] = good
+            bad[-1] = good[-1]
+        else:
+            logging.error('FLAG columns shapes differ! Check the data!')
+            raise RuntimeError('FLAG columns shapes differ in DATA and Flagtable!')
+        return bad
+
     with CasacoreTable(msout_path, readonly=False) as table:
         flag_in = CasacoreTable(flags_path)
         flag_col = flag_in.getcol('FLAG')
         logging.info('Copying flags to sub-channels 1 & 63 from the neighboring channels')
-        flag_col[:, 1::64, :] = flag_col[:, 2::64,:]
-        flag_col[:, 63::64, :] = flag_col[:, 62::64,:]
+        flag_col[:, 1::64, :] = replace_bad_col(flag_col[:, 1::64, :], flag_col[:, 2::64,:])
+        flag_col[:, 63::64, :] = replace_bad_col(flag_col[:, 63::64, :], flag_col[:, 62::64,:])
+
         table.putcol('FLAG', flag_col)
         table.putcol('FLAG_ROW', flag_in.getcol('FLAG_ROW'))
     return msout_path
@@ -197,8 +215,11 @@ def main():
         nchans = chans_interval_to_save[1] - chan0
         _ = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
 # split upper subband:
-        start_freq_to_save = 1279.994e6 # e-mail from Tom (8 Mar 2021)
-        chan0 = get_freq_chans(args.input, start_freq_to_save)
+# TODO: this does not work well -- the shape of upper 12288 -- wrong freq???
+#
+        # start_freq_to_save = 1279.994e6 # e-mail from Tom (8 Mar 2021)
+        # chan0 = get_freq_chans(args.input, start_freq_to_save)
+        chan0 = 12288
         msout2 = split_ms(args.input, chan0, 0, msout_path=args.input.replace('.MS', '_upper.MS')) # upper half-band
 
         if not args.flags:

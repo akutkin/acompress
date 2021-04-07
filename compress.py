@@ -228,7 +228,7 @@ def main():
         test_same_flags(msout2, args.flags)
         flagged_ms_path = apply_flags(msout2,
                                       flags_path=args.flags,
-                                      msout_path=args.output)
+                                      msout_path=msout2.replace('.MS', '_flagged.MS'))
         test_same_flags(flagged_ms_path, args.flags)
         result = compress(flagged_ms_path, args.output, bitrate=args.bitrate)
     return result

@@ -188,6 +188,7 @@ def parse_args():
     parser.add_argument('-b', '--bitrate', default=12, help='bitrate for dysco compression')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-d', '--decompress', default=False, action='store_true')
+    parser.add_argument('-c', '--clean', default=False, action='store_true', help='remove intermediate files')
     return parser.parse_args()
 
 
@@ -225,12 +226,18 @@ def main():
         if not args.flags:
             logging.info('No flags provided. Not compressing.')
             return
-        test_same_flags(msout2, args.flags)
+        # test_same_flags(msout2, args.flags) # willl always differ, since the edge chans are flagged as well
         flagged_ms_path = apply_flags(msout2,
                                       flags_path=args.flags,
                                       msout_path=msout2.replace('.MS', '_flagged.MS'))
-        test_same_flags(flagged_ms_path, args.flags)
+        # test_same_flags(flagged_ms_path, args.flags)
         result = compress(flagged_ms_path, args.output, bitrate=args.bitrate)
+
+        if args.clean:
+            logging.info('Removing intermediate files')
+            shutil.rmtree(flagged_ms_path)
+            shutil.rmtree(msout2)
+
     return result
 
 

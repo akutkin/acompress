@@ -66,7 +66,10 @@ def setup_logging(verbose=False):
 
 
 def apply_flags(msin_path, flags_path, msout_path=''):
-    """apply flags from flagtable to the data"""
+    """
+    apply flags from flagtable to the data
+    flags_path should be e.g. S1305+5815.MS.flagversions/flags.ccal
+    """
     if not msout_path:
         msout_path = msin_path
     else:
@@ -75,26 +78,30 @@ def apply_flags(msin_path, flags_path, msout_path=''):
         shutil.copytree(msin_path, msout_path)
     logging.debug('Applying flags to %s', msout_path)
 
-    def replace_bad_col(bad, good):
-        if len(bad) == len(good):
-            bad = good
-        elif len(bad) == len(good) + 1:
-            bad = good[:-1]
-        elif len(bad) == len(good) - 1:
-            bad[:-1] = good
-            bad[-1] = good[-1]
-        else:
-            logging.error('FLAG columns shapes differ! Check the data!')
-            raise RuntimeError('FLAG columns shapes differ in DATA and Flagtable!')
-        return bad
+    def replace_1st_62nd_columns(flag_col):
+        nflags = flag_col.shape[1]
+        last = nflags//64 * 64
+        flag_col[:,1:last:64,:] = flag_col[:,2:last:64,:]
+        flag_col[:,62:last:64,:] = flag_col[:,61:last:64,:]
+        if nflags - last > 1:
+            flag_col[:,last+1,:] = flag_col[:,last+2,:]
+        if nflags - last > 62:
+            flag_col[:,last+62,:] = flag_col[:,last+61,:]
+        return flag_col
 
     with CasacoreTable(msout_path, readonly=False) as table:
+        data_flag_col = table.getcol('FLAG')
         flag_in = CasacoreTable(flags_path)
         flag_col = flag_in.getcol('FLAG')
-        logging.info('Copying flags to sub-channels 1 & 63 from the neighboring channels')
-        flag_col[:, 1::64, :] = replace_bad_col(flag_col[:, 1::64, :], flag_col[:, 2::64,:])
-        flag_col[:, 63::64, :] = replace_bad_col(flag_col[:, 63::64, :], flag_col[:, 62::64,:])
-
+        if data_flag_col.shape != flag_col.shape:
+            logging.error('FLAG columns shapes differ in DATA and Flagtable! (%s and %s)', data_flag_col.shape, flag_col.shape)
+            if flag_col.shape[1]//2 == data_flag_col.shape[1]:
+                logging.info('Seems like the flagtable was created for the full band. Taking upper half...')
+                flag_col = flag_col[:,flag_col.shape[1]//2:,:]
+            else:
+                raise RuntimeError('FLAG columns shapes differ in DATA and Flagtable!')
+        logging.info('Copying flags to sub-channels 1 & 62 from the neighboring channels')
+        flag_col = replace_1st_62nd_columns(flag_col)
         table.putcol('FLAG', flag_col)
         table.putcol('FLAG_ROW', flag_in.getcol('FLAG_ROW'))
     return msout_path

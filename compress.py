@@ -78,15 +78,13 @@ def apply_flags(msin_path, flags_path, msout_path=''):
         shutil.copytree(msin_path, msout_path)
     logging.debug('Applying flags to %s', msout_path)
 
-    def replace_1st_62nd_columns(flag_col):
+    def replace_1st_63rd_columns(flag_col):
         nflags = flag_col.shape[1]
         last = nflags//64 * 64
         flag_col[:,1:last:64,:] = flag_col[:,2:last:64,:]
-        flag_col[:,62:last:64,:] = flag_col[:,61:last:64,:]
+        flag_col[:,63:last:64,:] = flag_col[:,62:last:64,:]
         if nflags - last > 1:
             flag_col[:,last+1,:] = flag_col[:,last+2,:]
-        if nflags - last > 62:
-            flag_col[:,last+62,:] = flag_col[:,last+61,:]
         return flag_col
 
     with CasacoreTable(msout_path, readonly=False) as table:
@@ -101,7 +99,7 @@ def apply_flags(msin_path, flags_path, msout_path=''):
             else:
                 raise RuntimeError('FLAG columns shapes differ in DATA and Flagtable!')
         logging.info('Copying flags to sub-channels 1 & 62 from the neighboring channels')
-        flag_col = replace_1st_62nd_columns(flag_col)
+        flag_col = replace_1st_63rd_columns(flag_col)
         table.putcol('FLAG', flag_col)
         table.putcol('FLAG_ROW', flag_in.getcol('FLAG_ROW'))
     return msout_path

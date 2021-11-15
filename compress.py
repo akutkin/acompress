@@ -52,19 +52,6 @@ def setup_logging(verbose=False):
         logging.basicConfig(level=logging.INFO)
 
 
-# def copy_flag_chan(flagtable, from_chan, to_chan):
-#     """
-#     copy flags from channels 2 and 62 to channels 1 and 63 within the flagtable
-#     """
-#     with CasacoreTable(flagtable, readonly=False) as table:
-#         c = table.getcol('FLAG')
-#         c[:, 1::64, :] = c[:, 2::64,:]
-#         c[:, 63::64, :] = c[:, 62::64,:]
-#         table.putcol('FLAG', c)
-
-
-
-
 def apply_flags(msin_path, flags_path, msout_path=''):
     """
     apply flags from flagtable to the data
@@ -91,8 +78,10 @@ def apply_flags(msin_path, flags_path, msout_path=''):
         data_flag_col = table.getcol('FLAG')
         flag_in = CasacoreTable(flags_path)
         flag_col = flag_in.getcol('FLAG')
+
         if data_flag_col.shape != flag_col.shape:
             logging.error('FLAG columns shapes differ in DATA and Flagtable! (%s and %s)', data_flag_col.shape, flag_col.shape)
+            raise RuntimeError('FLAG columns shapes differ in DATA and Flagtable!')
             if flag_col.shape[1]//2 == data_flag_col.shape[1]:
                 logging.info('Seems like the flagtable was created for the full band. Taking upper half...')
                 flag_col = flag_col[:,flag_col.shape[1]//2:,:]

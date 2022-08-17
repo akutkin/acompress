@@ -52,7 +52,7 @@ def setup_logging(verbose=False):
         logging.basicConfig(level=logging.INFO)
 
 
-def apply_flags(msin_path, flags_path, msout_path=''):
+def apply_flags(msin_path, flags_path, msout_path='', replace_edge_chans=False):
     """
     apply flags from flagtable to the data
     flags_path should be e.g. S1305+5815.MS.flagversions/flags.ccal
@@ -87,8 +87,9 @@ def apply_flags(msin_path, flags_path, msout_path=''):
                 flag_col = flag_col[:,flag_col.shape[1]//2:,:]
             else:
                 raise RuntimeError('FLAG columns shapes differ in DATA and Flagtable!')
-        logging.info('Copying flags to sub-channels 1 & 62 from the neighboring channels')
-        flag_col = replace_1st_63rd_columns(flag_col)
+        if replace_edge_chans:
+            logging.info('Copying flags to sub-channels 1 & 62 from the neighboring channels')
+            flag_col = replace_1st_63rd_columns(flag_col)
         table.putcol('FLAG', flag_col)
         table.putcol('FLAG_ROW', flag_in.getcol('FLAG_ROW'))
     return msout_path
@@ -181,6 +182,7 @@ def parse_args():
     parser.add_argument('-f', '--flags', help='flag table to restore')
     parser.add_argument('-b', '--bitrate', default=12, help='bitrate for dysco compression')
     parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-n', '--newdata', action='store_true', help='Use it for data newer than Jan 2021.')
     parser.add_argument('-d', '--decompress', default=False, action='store_true')
     parser.add_argument('-c', '--clean', default=False, action='store_true', help='remove intermediate files')
     return parser.parse_args()
@@ -203,28 +205,35 @@ def main():
             pass
         else:
             _ = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
-# split out the 1400-1425 chunk (Tom's message)
+# split out the 1400-1425 chunk -- Galactic HI
         freqs_interval_to_save = [1400.0e6, 1425.0e6]
         chans_interval_to_save = get_freq_chans(args.input, freqs_interval_to_save)
         chan0 = chans_interval_to_save[0]
         nchans = chans_interval_to_save[1] - chan0
         _ = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', f'_{chan0}_{nchans}.MS')) # to verify with Tom
 # split upper subband:
-# TODO: this does not work well -- the shape of upper 12288 -- wrong freq???
-#
-        # start_freq_to_save = 1279.994e6 # e-mail from Tom (8 Mar 2021)
-        # chan0 = get_freq_chans(args.input, start_freq_to_save)
-        chan0 = 12288
-        msout2 = split_ms(args.input, chan0, 0, msout_path=args.input.replace('.MS', '_upper.MS')) # upper half-band
+
+        if args.newdata:
+            chan0 = 6080
+            nchans = 18432
+            replace_edge_chans = False
+        else:
+            chan0 = 12288 # half band for old data
+            nchans = 0
+            replace_edge_chans = True
+
+        msout2 = split_ms(args.input, chan0, nchans, msout_path=args.input.replace('.MS', '_upper.MS')) # upper half-band
 
         if not args.flags:
             logging.info('No flags provided. Not compressing.')
             return
-        # test_same_flags(msout2, args.flags) # willl always differ, since the edge chans are flagged as well
+
+        test_same_flags(msout2, args.flags) # will always differ if the edge chans are flagged
         flagged_ms_path = apply_flags(msout2,
                                       flags_path=args.flags,
-                                      msout_path=msout2.replace('.MS', '_flagged.MS'))
-        # test_same_flags(flagged_ms_path, args.flags)
+                                      msout_path=msout2.replace('.MS', '_flagged.MS'),
+                                      replace_edge_chans=replace_edge_chans)
+        test_same_flags(flagged_ms_path, args.flags)
         result = compress(flagged_ms_path, args.output, bitrate=args.bitrate)
 
         if args.clean:

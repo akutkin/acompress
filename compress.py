@@ -164,7 +164,7 @@ def compress(msin_path, msout_path='', bitrate=12):
 
 def decompress(msin_path, msout_path=''):
     if not msout_path:
-        msout_path = msin_path.replace('.MS', '_compressed.MS')
+        msout_path = msin_path.replace('.MS', '_decompressed.MS')
     logging.debug('Decompressing file %s to %s', msin_path, msout_path)
     command_args = ['steps=[]',
                     f'msin={msin_path}',
